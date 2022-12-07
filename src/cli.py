@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 import typer
-from src import __app_name__, __version__, ERRORS, config, database
+from src import __app_name__, __version__, ERRORS, config, database, tracker
 
 # Initialise application
 app = typer.Typer()
@@ -40,6 +40,80 @@ def init(
         )
 
 
+def get_applier() -> tracker.Applier:
+    if config.CONFIG_FILE_PATH.exists():
+        db_path = database.get_database_path(config.CONFIG_FILE_PATH)
+    else:
+        typer.secho(
+            'Config file not found. Please run "src.init".',
+            fg=typer.colors.RED
+        )
+        raise typer.Exit(1)
+    if db_path.exists():
+        return tracker.Applier(db_path)
+    else:
+        typer.secho(
+            'Database not found. Please run "src.init".',
+            fg=typer.colors.RED
+        )
+        raise typer.Exit(1)
+
+
+@app.command(name="add")
+def add(
+        title: str,
+        description: List[str] = typer.Argument(...)
+) -> None:
+    """
+    This function adds a new application to the list.
+    """
+    applier = get_applier()
+    application, error = applier.add(title, description)
+    if error:
+        typer.secho(
+            f'Adding application failed with {ERRORS[error]}',
+            fg=typer.colors.RED
+        )
+        raise typer.Exit(1)
+    else:
+        typer.secho(
+            'Application added to list.',
+            fg=typer.colors.GREEN
+        )
+
+
+@app.command(name='list')
+def list_all() -> None:
+    """
+    This function lists all applications in the database.
+    """
+    applier = get_applier()
+    application_list = applier.get_application_list()
+    if len(application_list) == 0:
+        typer.secho(
+            'There are no applications in the list yet.',
+            fg=typer.colors.RED
+        )
+        raise typer.Exit()
+    typer.secho("\nApplication list:\n", fg=typer.colors.BLUE, bold=True)
+    columns = (
+        "ID. ",
+        "| Title ",
+        "| Description "
+    )
+    headers = "".join(columns)
+    typer.secho(headers, fg=typer.colors.BLUE, bold=True)
+    typer.secho("-" * len(headers), fg=typer.colors.BLUE)
+    for id, application in enumerate(application_list, 1):
+        title, desc = application.values()
+        typer.secho(
+            f"{id}{(len(columns[0]) - len(str(id))) * ' '}"
+            f"| {title}"
+            f"| {desc}",
+            fg=typer.colors.BLUE,
+            bold=True
+        )
+    typer.secho("-" * len(headers) + "\n", fg=typer.colors.BLUE)
 
 
 def _version_callback(value: bool) -> None:

@@ -2,6 +2,8 @@ import json
 import pytest
 
 from typer.testing import CliRunner
+
+import src.tracker
 from src import cli, __app_name__, __version__, SUCCESS, DB_READ_ERROR, tracker
 
 runner = CliRunner()
@@ -16,12 +18,7 @@ def test_version():
 @pytest.fixture
 def mock_json_file(tmp_path):
     application = [{"Title": "Data Scientist",
-                    "Company": "Oracle",
-                    "Description": "We are looking for scientists who are passionate about data and are eager to tackle big challenges using Data Science and Machine Learning. The main focus of this role is to solve non-trivial business problems in Fortune 500 companies. This person will mostly work with a mix of structured and unstructured and use scientific methods and state-of-the-art techniques and tools to help our customers achieve their business objectives.",
-                    "Location": "London",
-                    "Remote": True,
-                    "Close Date": "25/12/2022",
-                    "Date Applied": "10/12/2022"}]
+                    "Description": "We are looking for scientists who are passionate..."}]
     db_file = tmp_path / "tracker.json"
     with db_file.open('w') as db:
         json.dump(application, db, indent=4)
@@ -30,22 +27,40 @@ def mock_json_file(tmp_path):
 
 # Now create some test data with different test cases along with the expected result
 test_data1 = {
-    "Title": ["Data", "Scientist"],
-    "Description": "We are looking for scientists...",
-    "Remote": True,
+    "title": "Data Scientist",
+    "description": ["We are looking for scientists..."],
     "application": {
-        "Title": "Data Scientist",
-        "Description": "We are looking for scientists...",
-        "Remote": True
+        "title": "Data Scientist",
+        "description": "We are looking for scientists..."
     }
 }
 test_data2 = {
-    "Title": ["Junior Data Scientist"],
-    "Description": "We are looking for scientists...",
-    "Remote": False,
+    "title": "Junior Data Scientist",
+    "description": ["We", "are", "looking", "for", "scientists..."],
     "application": {
-        "Title": "Junior Data Scientist",
-        "Description": "We are looking for scientists...",
-        "Remote": False
+        "title": "Junior Data Scientist",
+        "description": "We are looking for scientists..."
     }
 }
+
+
+@pytest.mark.parametrize(
+    "title, description, expected",
+    [pytest.param(
+        test_data1["title"],
+        test_data1["description"],
+        (test_data1["application"], SUCCESS)
+    ),
+        pytest.param(
+            test_data2["title"],
+            test_data2["description"],
+            (test_data2["application"], SUCCESS)
+        )]
+
+)
+def test_add(mock_json_file, title, description, expected):
+    applier = tracker.Applier(mock_json_file)
+    assert applier.add(title, description) == expected
+    read = applier._db_handler.read_applications()
+    assert len(read.application_list) == 2
+
