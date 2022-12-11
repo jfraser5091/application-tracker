@@ -3,8 +3,8 @@ import pytest
 
 from typer.testing import CliRunner
 
-import src.tracker
-from src import cli, __app_name__, __version__, SUCCESS, DB_READ_ERROR, tracker
+import application_tracker.tracker
+from application_tracker import cli, __app_name__, __version__, SUCCESS, DB_READ_ERROR, tracker
 
 runner = CliRunner()
 

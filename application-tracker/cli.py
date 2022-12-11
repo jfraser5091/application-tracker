@@ -82,6 +82,50 @@ def add(
         )
 
 
+@app.command(name='remove')
+def remove(
+        app_id: int = typer.Argument(...),
+        force: bool = typer.Option(
+            False,
+            "--force",
+            "-f",
+            help="Force deletion without confirmation."
+        )
+) -> None:
+    applier = get_applier()
+
+    def _remove():
+        application, error = applier.remove(app_id)
+        if error:
+            typer.secho(
+                f'Removing application #{app_id} failed with {ERRORS[error]}',
+                fg=typer.colors.RED
+            )
+            raise typer.Exit(1)
+        else:
+            typer.secho(
+                f'Application #{app_id}: {application["title"]} removed.',
+                fg=typer.colors.GREEN
+            )
+
+    if force:
+        _remove()
+    else:
+        application_list = applier.get_application_list()
+        try:
+            application = application_list[app_id - 1]
+        except IndexError:
+            typer.secho('Invalid application ID', fg=typer.colors.RED)
+            raise typer.Exit(1)
+        delete = typer.confirm(
+            f"Delete application #{app_id}?"
+        )
+        if delete:
+            _remove()
+        else:
+            typer.echo("Operation cancelled.")
+
+    return
 @app.command(name='list')
 def list_all() -> None:
     """

@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Any, Dict, NamedTuple, List
 from src.database import DatabaseHandler
-from src import DB_READ_ERROR
+from src import DB_READ_ERROR, ID_ERROR
 
 
 class CurrentApplication(NamedTuple):
@@ -26,6 +26,17 @@ class Applier:
         if read.error == DB_READ_ERROR:
             return CurrentApplication(application, read.error)
         read.application_list.append(application)
+        write = self._db_handler.write_applications(read.application_list)
+        return CurrentApplication(application, write.error)
+
+    def remove(self, app_id: int) -> CurrentApplication:
+        read = self._db_handler.read_applications()
+        if read.error:
+            return CurrentApplication({}, read.error)
+        try:
+            application = read.application_list.pop(app_id - 1)
+        except IndexError:
+            return CurrentApplication({}, ID_ERROR)
         write = self._db_handler.write_applications(read.application_list)
         return CurrentApplication(application, write.error)
 
